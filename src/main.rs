@@ -1,7 +1,7 @@
 
-pub mod exercises;
+mod core;
 fn main() {
-    use crate::exercises::first::first_run;
+    use crate::core::exercises::second::run;
 
-    first_run();
+    run();
 }

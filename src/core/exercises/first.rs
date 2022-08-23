@@ -165,7 +165,7 @@ fn ui_example(mut egui_context: ResMut<EguiContext>) {
     });
 }
 
-pub fn first_run(){
+pub fn run(){
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
