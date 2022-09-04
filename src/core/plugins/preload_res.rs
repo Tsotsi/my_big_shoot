@@ -1,13 +1,11 @@
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+};
 use std::collections::HashMap;
 
-
-pub const CHARACTER_ASSET_PNG_1: &str = "characters/bonus1.png";
-
-
+pub const CHARACTER_ASSET_PNG_1: &str = "characters/chara1.png";
 
 pub struct PreloadResPlugin;
-
 
 impl Plugin for PreloadResPlugin {
     fn build(&self, app: &mut App) {
@@ -21,8 +19,7 @@ impl Plugin for PreloadResPlugin {
         //     .add_system(greet_characters)
         //     .add_system(sprite_movement);
         app.insert_resource(h)
-    
-        .add_startup_system(preload_sprites_res);
+            .add_startup_system(preload_sprites_res);
     }
 }
 
@@ -31,13 +28,18 @@ fn preload_sprites_res(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-){
+) {
     let texture_handle = asset_server.load(CHARACTER_ASSET_PNG_1);
-    let texture_atlas = TextureAtlas::from_grid_with_padding(texture_handle,
-         Vec2::new(26., 34.), 
-         12, 8,
-         Vec2::new(0., 2.),Vec2::new(0., 2.));
+    let texture_atlas = TextureAtlas::from_grid_with_padding(
+        texture_handle,
+        Vec2::new(26., 34.),
+        12,
+        8,
+        Vec2::new(0., 2.),
+        Vec2::new(0., 2.),
+    );
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
     texture_atlas_map.insert(CHARACTER_ASSET_PNG_1.to_string(), texture_atlas_handle);
     commands.spawn_bundle(Camera2dBundle::default());
 }
+

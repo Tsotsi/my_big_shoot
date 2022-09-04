@@ -14,12 +14,12 @@ fn ui_example(mut egui_context: ResMut<EguiContext>) {
 }
 
 fn spawn_main_character(mut commands: Commands, texture_atlas_map: Res<HashMap<String, Handle<TextureAtlas>>>){
-    commands
-        .spawn()
-        .insert(character::Character)
-        .insert(character::Name{
-            value:"Player1".to_string(),
-        });
+    // commands
+    //     .spawn()
+    //     .insert(character::Character)
+    //     .insert(character::Name{
+    //         value:"Player1".to_string(),
+    //     });
     let mut character1_sheet = SpriteSheetBundle {
         texture_atlas: texture_atlas_map
             .get(&preload_res::CHARACTER_ASSET_PNG_1.to_string())
@@ -29,9 +29,9 @@ fn spawn_main_character(mut commands: Commands, texture_atlas_map: Res<HashMap<S
         ..default()
     };
     character1_sheet.sprite.index =15;
-    commands
-        .spawn_bundle(character1_sheet)
-        .insert(character::Direction::Up);
+    // commands
+    //     .spawn_bundle(character1_sheet)
+    //     .insert(character::Direction::Up);
 }
 
 pub fn run(){
