@@ -1,20 +1,22 @@
 // use crate::plugins::preload_res;
-use bevy::asset::AssetStage;
+
 use bevy::prelude::*;
-use bevy::window;
 use bevy_egui::{egui, EguiContext, EguiPlugin};
-use bevy_inspector_egui::WorldInspectorPlugin;
-use big_shoot::core::components::character::Label;
-use big_shoot::core::loaders::animation_loader::Animation;
-use big_shoot::core::loaders::MainConfig;
-use big_shoot::core::loaders::animation_loader::AnimationState;
+use bevy_inspector_egui::{WorldInspectorPlugin, RegisterInspectable};
+use big_shoot::core::components::character::MovementState;
 use std::collections::HashMap;
 use std::fs;
 
-use big_shoot::core::components::character;
+use big_shoot::core::components::{Info, Label, Velocity};
+use big_shoot::core::loaders::animation_loader::Animation;
+use big_shoot::core::loaders::animation_loader::AnimationState;
+use big_shoot::core::loaders::MainConfig;
 use big_shoot::core::loaders::{animation_loader::AnimationLoader, MainConfigLoader};
+use big_shoot::core::loaders::{AnimationMap, AnimationNameMap};
+use big_shoot::core::plugins::animation_control::AnimationControlPlugin;
+use big_shoot::core::plugins::player::PlayerBundle;
 use big_shoot::core::plugins::preload_res;
-use big_shoot::core::GameState;
+use big_shoot::core::states::GameState;
 
 fn ui_example(mut egui_context: ResMut<EguiContext>) {
     egui::Window::new("Hello").show(egui_context.ctx_mut(), |ui| {
@@ -24,66 +26,63 @@ fn ui_example(mut egui_context: ResMut<EguiContext>) {
 
 fn spawn_main_character(
     mut commands: Commands,
-    main_cfg:Res<MainConfig>,
+    main_cfg: Res<MainConfig>,
     asset_server: Res<AssetServer>,
     mut textures: ResMut<Assets<TextureAtlas>>,
     texture_atlas_map: Res<HashMap<String, Handle<TextureAtlas>>>,
 ) {
-    let animation_handle: Handle<Animation> =
-        asset_server.load("characters/animations/chara_1_1_walk_down.animation.toml");
-        match animation_handle.id{
-            bevy::asset::HandleId::Id(uuid, id) => println!("uuid: {}, id: {}", uuid,id),
-            bevy::asset::HandleId::AssetPathId(p) => println!("assetpath: {:?}", p),
-        }
+    let animation_name_map = AnimationNameMap::from(main_cfg.characters["main"].clone());
+    let mut animation_map = AnimationMap::new();
+    for (name, cfg_path) in animation_name_map.iter() {
+        animation_map.insert(
+            name.clone(),
+            asset_server.load::<Animation, &std::string::String>(&cfg_path),
+        );
+    }
+
     let mut main_sheet_bundle = SpriteSheetBundle {
-        texture_atlas: texture_atlas_map.get(&main_cfg.characters["main"].img).expect(format!("can't found main texture-atlas: {}", &main_cfg.characters["main"].img).as_str()).clone(),
+        texture_atlas: texture_atlas_map
+            .get(&main_cfg.characters["main"].img)
+            .expect(
+                format!(
+                    "can't found main texture-atlas: {}",
+                    &main_cfg.characters["main"].img
+                )
+                .as_str(),
+            )
+            .clone(),
         transform: Transform::from_scale(Vec3::splat(2.0)),
         ..Default::default()
     };
     // main_sheet_bundle.sprite.index = main_cfg.characters["main"].sprite_idx;
-    commands.spawn_bundle(main_sheet_bundle)
-    .insert(Label(main_cfg.characters["main"].name.clone()))
-    .insert(animation_handle)
-    .insert(AnimationState::default());
-    
+    commands
+        .spawn_bundle(main_sheet_bundle)
+        .insert(animation_map)
+        .insert(AnimationState::default())
+        // .insert(big_shoot::core::components::Direction::default())
+        // .insert(Label(main_cfg.characters["main"].name.clone()))
+        .insert_bundle(PlayerBundle {
+            label: Label(main_cfg.characters["main"].name.clone()),
+            info: Info::from(240.0f32),
+            ..Default::default()
+        });
 }
 
-
-fn animate(
-    time: Res<Time>,
+fn save_animation(
+    ipt: Res<Input<KeyCode>>,
     animations: Res<Assets<Animation>>,
-    mut query: Query<(
-        &mut AnimationState,
-        &mut TextureAtlasSprite,
-        &Handle<Animation>,
-    )>,
+    query: Query<(&Handle<Animation>, &Label)>,
 ) {
-    for (mut player, mut texture, handle) in query.iter_mut() {
-        // Get the animation from handle (or skip this entity if not yet loaded)
-        let animation = match animations.get(handle) {
-            Some(anim) => anim,
-            None => continue,
-        };
-
-        // Update the state
-        player.update(animation, time.delta());
-
-        // Update the texture atlas
-        texture.index = player.frame_index();
-    }
-}
-
-fn save_animation(ipt: Res<Input<KeyCode>>,
-    animations: Res<Assets<Animation>>, query: Query<(&Handle<Animation>, &Label)>){
-    
     if ipt.just_released(KeyCode::LWin) {
-        for (handle, label) in query.iter()  {
-            match animations.get(handle) {
-                Some(anim) => {
-                    fs::write(format!("assets/cache/{}.animation.toml", label.0), toml::to_string(&anim.0).expect("serialize animation failed"))
-                },
-                None => continue,
-            };
+        for (handle, label) in query.iter() {
+            if let Some(anim) = animations.get(handle) {
+                let s = format!("assets/cache/{}.animation.toml", label.0);
+                println!("save {}", s);
+                let _ = fs::write(
+                    s,
+                    toml::to_string(&anim.0).expect("serialize animation failed"),
+                );
+            }
         }
     }
 }
@@ -92,6 +91,83 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     println!("game is going setup");
     let _: Handle<MainConfig> = asset_server.load("configs/main.cfg.toml");
     // commands.spawn_bundle(Camera2dBundle::default());
+}
+
+fn handle_player_input(
+    game_state: Res<GameState>,
+    time: Res<Time>,
+    mut commands: Commands,
+    ipt: Res<Input<KeyCode>>,
+    mut query: Query<(
+        &mut big_shoot::core::components::Direction,
+        Option<&mut Velocity>,
+        Option<&Info>,
+        Option<&mut MovementState>,
+    )>,
+) {
+    if game_state.is_paused() {
+        return;
+    }
+    for (mut d, v, i, m) in query.iter_mut() {
+        let mut dir = Vec2::ZERO;
+
+        if ipt.pressed(KeyCode::A) {
+            dir.x += -1.0f32;
+        }
+        if ipt.pressed(KeyCode::D) {
+            dir.x += 1.0f32;
+        }
+        if ipt.pressed(KeyCode::S) {
+            dir.y += -1.0f32;
+        }
+        if ipt.pressed(KeyCode::W) {
+            dir.y += 1.0f32;
+        }
+        if dir != Vec2::ZERO {
+            if dir.y < 0f32 {
+                *d = big_shoot::core::components::Direction::Down;
+            } else if dir.y > 0f32 {
+                *d = big_shoot::core::components::Direction::Up;
+            }
+            if dir.x < 0f32 {
+                *d = big_shoot::core::components::Direction::Left;
+            } else if dir.x > 0f32 {
+                *d = big_shoot::core::components::Direction::Right;
+            }
+        }
+        
+        if let Some(mut movement_state) = m{
+            
+            if dir != Vec2::ZERO{
+                movement_state.turn_to("walk");
+            }else{
+                movement_state.turn_to("idle");
+            }
+            // println!("handle_player_input!!! got movement_state. dir: {:?}, movement_state: {:?}", dir, movement_state);
+        }
+        
+        // try move
+        if let (Some(mut velocity), Some(info)) = (v, i) {
+            velocity.set(info.speed * dir.normalize_or_zero() * time.delta_seconds());
+        }
+    }
+}
+
+fn player_move_system( game_state: Res<GameState>,mut query: Query<(
+    &mut Transform,
+    &MovementState,
+    &Velocity,
+)>,){
+    if game_state.is_paused() {
+        return;
+    }
+    for (mut transform,movement_state, velocity) in query.iter_mut() {
+        // transform.translation += Vec3::new(0f32, 0f32, 0f32);
+        if !movement_state.is_walk(){
+            continue;
+        }
+        transform.translation += Vec3::from(velocity);
+    }
 }
 
 pub fn run() {
@@ -110,17 +186,25 @@ pub fn run() {
         .add_plugin(EguiPlugin)
         .add_plugin(preload_res::PreloadResPlugin)
         .add_plugin(WorldInspectorPlugin::new())
+        .add_plugin(AnimationControlPlugin::new())
         .add_asset::<Animation>()
         .add_asset::<MainConfig>()
         .init_asset_loader::<AnimationLoader>()
         .init_asset_loader::<MainConfigLoader>()
-        .insert_resource(GameState::Normal)
+        .insert_resource(GameState::default())
         .add_startup_system(setup)
-        .add_startup_system(spawn_main_character)
+        .add_startup_system(
+            spawn_main_character.after(preload_res::PreloadResPluginLabel::LoadSpriteTexture),
+        )
         // .add_startup_system_to_stage(StartupStage::PostStartup, spawn_main_character)
         .add_system(ui_example)
-        .add_system(animate)
         .add_system(save_animation)
+        .add_system(handle_player_input)
+        .add_system(player_move_system)
+        .register_inspectable::<MovementState>()
+        .register_inspectable::<Info>()
+        .register_inspectable::<Velocity>()
+        .register_inspectable::<big_shoot::core::components::Direction>()
         .run();
 }
 fn main() {

@@ -1,6 +1,8 @@
+use std::path::{Path, PathBuf};
+
 use bevy::{
     asset::{AssetLoader, BoxedFuture, Error, LoadContext, LoadedAsset},
-    prelude::{Deref, Vec2},
+    prelude::{AssetServer, Component, Deref, Handle, Res, Vec2, DerefMut},
     reflect::TypeUuid,
     utils::hashbrown::HashMap,
 };
@@ -28,7 +30,7 @@ pub struct MainConfig {
 // padding = [0,2]
 // offset = [0,2]
 // animations = ["walk_down","walk_up","walk_left","walk_right"]
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CharacterCfg {
     pub name: String,
     pub img: String,
@@ -59,5 +61,56 @@ impl AssetLoader for MainConfigLoader {
 
     fn extensions(&self) -> &[&str] {
         &["cfg.toml"]
+    }
+}
+
+impl CharacterCfg {
+    pub fn gen_animation_file_path(self) -> Vec<String> {
+        let path = Path::new(&self.img).parent().expect("no parent dir");
+        let mut res: Vec<String> = Vec::new();
+        for animation_name in self.animations.iter() {
+            res.push(
+                path.join(format!(
+                    "animations/{}_{}.animation.toml",
+                    self.name, animation_name
+                ))
+                .to_str()
+                .unwrap().to_string(),
+            );
+        }
+        res
+    }
+}
+
+
+#[derive(Component, Deref, DerefMut)]
+pub struct AnimationMap(HashMap<String, Handle<animation_loader::Animation>>);
+
+impl AnimationMap{
+    pub fn new() -> Self {
+        AnimationMap(HashMap::new())
+    }
+}
+
+#[derive(Component, Deref, DerefMut)]
+pub struct AnimationNameMap(HashMap<String, String>);
+
+impl From<CharacterCfg> for AnimationNameMap {
+    fn from(cfg: CharacterCfg) -> Self {
+        let path = Path::new(&cfg.img).parent().expect("no parent dir");
+        let mut res: AnimationNameMap = AnimationNameMap(HashMap::new());
+        for animation_name in cfg.animations.iter() {
+            res.0.insert(
+                animation_name.to_string(),
+                path.join(format!(
+                    "animations/{}_{}.animation.toml",
+                    cfg.name, animation_name
+                ))
+                .to_str()
+                .unwrap()
+                .to_string(),
+            );
+        }
+        res
     }
 }

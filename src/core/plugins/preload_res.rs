@@ -7,6 +7,19 @@ pub const CHARACTER_ASSET_PNG_1: &str = "characters/chara1.png";
 
 pub struct PreloadResPlugin;
 
+// pub const PRELOAD_RES_PLUGIN_LABEL:&str = "PRELOAD_RES_PLUGIN";
+
+pub enum PreloadResPluginLabel{
+    LoadSpriteTexture,
+}
+impl SystemLabel for PreloadResPluginLabel{
+    fn as_str(&self) ->  &'static str {
+        match self {
+            PreloadResPluginLabel::LoadSpriteTexture=>"PreloadResPluginLabel::LoadSpriteTexture"
+        }
+    }
+}
+
 impl Plugin for PreloadResPlugin {
     fn build(&self, app: &mut App) {
         let h: HashMap<String, Handle<TextureAtlas>> = HashMap::with_capacity(10);
@@ -19,7 +32,7 @@ impl Plugin for PreloadResPlugin {
         //     .add_system(greet_characters)
         //     .add_system(sprite_movement);
         app.insert_resource(h)
-            .add_startup_system(preload_sprites_res);
+            .add_startup_system(preload_sprites_res.label(PreloadResPluginLabel::LoadSpriteTexture));
     }
 }
 

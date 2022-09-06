@@ -11,6 +11,7 @@ benimator = {git = "https://github.com/jcornaz/benimator",tag="v4.0.0-rc.1", fea
 bevy = "^0.8.0"
 bevy-inspector-egui = "0.12.1"
 bevy_egui = "^0.15.1"
+leafwing-input-manager = "0.5.2"
 serde = {version="1.0.144",features = ["derive"]}
 serde_yaml = "0.9.10"
 toml = "0.5.9"
