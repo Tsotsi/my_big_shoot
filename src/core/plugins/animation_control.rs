@@ -71,7 +71,7 @@ pub fn animate_system(
                 // Update the texture atlas
                 texture.index = player.frame_index();
             }
-            None => continue,
+            None => {println!("{} not found", &dir.prefix_str(clip_name));},
         }
     }
 }

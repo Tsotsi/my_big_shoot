@@ -1,3 +1,4 @@
-/target
+/target/
 /assets/
 !/assets/brands/icon.png
+/dist/
