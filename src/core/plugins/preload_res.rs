@@ -53,6 +53,6 @@ fn preload_sprites_res(
     );
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
     texture_atlas_map.insert(CHARACTER_ASSET_PNG_1.to_string(), texture_atlas_handle);
-    commands.spawn_bundle(Camera2dBundle::default());
+
 }
 

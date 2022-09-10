@@ -8,15 +8,16 @@ exclude = ["assets/**/*", "scripts/**/*"]
 
 [dependencies]
 anyhow = "1.0.62"
-benimator = {git = "https://github.com/jcornaz/benimator",tag="v4.0.0-rc.1", features=["serde"]}
+benimator = { git = "https://github.com/jcornaz/benimator", tag = "v4.0.0-rc.1", features = [
+    "serde",
+] }
 bevy = "^0.8.0"
 bevy-inspector-egui = "0.12.1"
 bevy_egui = "^0.15.1"
 leafwing-input-manager = "0.5.2"
-serde = {version="1.0.144",features = ["derive"]}
+serde = { version = "1.0.144", features = ["derive"] }
 serde_yaml = "0.9.10"
 toml = "0.5.9"
-
 # enable a small amount of optimization in debug mode
 [profile.dev]
 opt-level = 1
